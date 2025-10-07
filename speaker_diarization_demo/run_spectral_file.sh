@@ -140,12 +140,12 @@ if [ $stage -le 3 ]; then
   #     data/${dataset} $outevaldir/rttm \
   #     $dubm_model $ie_model $outevaldir_vb/
 
-  local/resegment_vbhmm.sh \
-        --nj $decode_nj --stage $vb_hmm_stage \
-        --overlap 1 --PYTHON $PYTHON \
-        --pyannote_pretrained_model $pyannote_pretrained_model \
-        data/${dataset} $outevaldir/rttm \
-        $dubm_model $ie_model $outevaldir_vb/ 
+  # local/resegment_vbhmm.sh \
+  #       --nj $decode_nj --stage $vb_hmm_stage \
+  #       --overlap 1 --PYTHON $PYTHON \
+  #       --pyannote_pretrained_model $pyannote_pretrained_model \
+  #       data/${dataset} $outevaldir/rttm \
+  #       $dubm_model $ie_model $outevaldir_vb/ 
 fi
 
 end=`date +%s`
