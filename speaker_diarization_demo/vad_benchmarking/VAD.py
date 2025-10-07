@@ -57,7 +57,20 @@ def VBxVAD(input_wav):
 def pyaanote_vad(args,input_wav,dataset,HYPER_PARAMETERS=None):
 	nfile=input_wav.split("/")[-1].split(".")[0]
 
-	model = Model.from_pretrained(args.pyannote_pretrained_model)
+	# Accept HF repo id, local directory, or path to pytorch_model.bin
+	model_path = args.pyannote_pretrained_model
+	if os.path.isfile(model_path) and model_path.endswith('pytorch_model.bin'):
+		model_path = os.path.dirname(model_path)
+	try:
+		# Try with token first if provided via env/arg
+		hf_token = os.environ.get('HF_TOKEN', None)
+		if hf_token:
+			model = Model.from_pretrained(model_path, use_auth_token=hf_token)
+		else:
+			model = Model.from_pretrained(model_path)
+	except TypeError:
+		# Backward-compat without token kwarg
+		model = Model.from_pretrained(model_path)
 	pipeline = VoiceActivityDetection(segmentation=model)
 	if HYPER_PARAMETERS is None:
 		if "ami" in args.dataset:
@@ -129,5 +142,4 @@ def main():
 	
 	
 main()
-
 

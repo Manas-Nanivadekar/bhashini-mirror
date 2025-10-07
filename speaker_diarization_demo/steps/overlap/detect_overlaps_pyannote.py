@@ -1,40 +1,54 @@
-#!/usr/local/env python
-# Copyright 2021  Johns Hopkins University (Author: Desh Raj)
-#
-# Overlap detection using pretrained Pyannote models
-import torch
+#!/usr/bin/env python
+"""
+Overlap detection using modern pyannote.audio Pipeline API.
+
+Replaces legacy torch.hub access to `ovl_dihard/ovl_ami`.
+"""
 import argparse
-import glob
 import os
-import pathlib
+from pyannote.audio import Pipeline
 
 
 def read_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("wav_scp", help="Path to wav.scp file")
     parser.add_argument("out_dir", help="Path to output dir")
-    parser.add_argument("--model-name", type=str, help="Name of model (ovl_ami/ovl_dihard)")
+    parser.add_argument(
+        "--pretrained-id",
+        type=str,
+        default="pyannote/overlapped-speech-detection",
+        help="Hugging Face model id or local path for overlapped speech detection",
+    )
+    parser.add_argument(
+        "--hf-token",
+        type=str,
+        default=os.environ.get("HF_TOKEN"),
+        help="Hugging Face access token (or set HF_TOKEN env)",
+    )
     args = parser.parse_args()
     return args
 
-def main(wav_scp, out_dir, model="ovl_dihard"):
-    ovl_pipeline = torch.hub.load(
-        'pyannote/pyannote-audio',
-        model,
-        pipeline=True,
-        step=0.25,
-        batch_size=128,
-        device='cpu'
-    )
+
+def main(wav_scp, out_dir, pretrained_id, hf_token=None):
+    if hf_token:
+        pipeline = Pipeline.from_pretrained(pretrained_id, use_auth_token=hf_token)
+    else:
+        pipeline = Pipeline.from_pretrained(pretrained_id)
+
+    os.makedirs(out_dir, exist_ok=True)
     with open(wav_scp, 'r') as f:
         for line in f:
-            file_id, wav_path = line.strip().split()
-            ovl_out = ovl_pipeline({'audio': wav_path})
-            with open(f'{out_dir}/{file_id}.rttm', 'w') as f_out:
-                ovl_out.write_rttm(f_out)
+            parts = line.strip().split()
+            if len(parts) == 2:
+                file_id, wav_path = parts
+            else:
+                # Kaldi-style: <utt> <sox/cmd ... wav>
+                file_id, wav_path = parts[0], parts[2]
+            diar = pipeline(wav_path)
+            with open(os.path.join(out_dir, f"{file_id}.rttm"), 'w') as f_out:
+                diar.write_rttm(f_out)
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     args = read_args()
-    if not os.path.exists(args.out_dir):
-        os.makedirs(args.out_dir)
-    main(args.wav_scp, args.out_dir, model=args.model_name)
+    main(args.wav_scp, args.out_dir, pretrained_id=args.pretrained_id, hf_token=args.hf_token)

@@ -12,7 +12,11 @@ parser.add_argument(
 parser.add_argument(
         'output_dir', type=Path, help='Output directory')
 parser.add_argument(
-        '--pyannote_pretrained_model', type=str, default="../vad_benchmarking/VAD_model/pytorch_model.bin"
+        '--pyannote_pretrained_model', type=str, default="../vad_benchmarking/VAD_model/pytorch_model.bin",
+)
+parser.add_argument(
+        '--hf_token', type=str, default=os.environ.get('HF_TOKEN'),
+        help='Hugging Face access token (or set HF_TOKEN env)'
 )
 args = parser.parse_args()
 
@@ -26,8 +30,14 @@ def generate_overlap_labels(num_frames,wavfile,overlap_filename,step=100):
 
         # pipeline = Pipeline.from_pretrained("pyannote/overlapped-speech-detection",
         #                                     use_auth_token="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")
-        
-        model = Model.from_pretrained(args.pyannote_pretrained_model)
+        # Accept either HF repo id, local directory, or path to pytorch_model.bin
+        model_path = args.pyannote_pretrained_model
+        if os.path.isfile(model_path) and model_path.endswith('pytorch_model.bin'):
+            model_path = os.path.dirname(model_path)
+        if args.hf_token:
+            model = Model.from_pretrained(model_path, use_auth_token=args.hf_token)
+        else:
+            model = Model.from_pretrained(model_path)
         # pipeline = OverlappedSpeechDetectionPipeline(use_auth_token="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").instantiate(best_params)
         pipeline = OverlappedSpeechDetectionPipeline(segmentation=model).instantiate(best_params)
         output = pipeline(wavfile)
@@ -98,4 +108,3 @@ if __name__ == "__main__":
     for recording_id in recording_ids:
         overlap_filename = Path(args.output_dir, "per_file_overlap", recording_id + '.txt')
         generate_overlap_labels(frame_counts[recording_id],wavfiles_path[recording_id],overlap_filename)
-

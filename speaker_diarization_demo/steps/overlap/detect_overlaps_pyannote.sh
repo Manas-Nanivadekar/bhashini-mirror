@@ -4,8 +4,8 @@ cmd="run.pl"
 nj=20
 stage=0
 
-# https://github.com/pyannote/pyannote-audio-hub#overlapped-speech-detection
-model=ovl_dihard  # Select ovl_dihard or ovl_ami
+# Default overlapped speech detection pipeline (HF id)
+model=pyannote/overlapped-speech-detection
 
 . parse_options.sh || exit 1;
 echo "$0 $@"  # Print the command line for logging
@@ -54,7 +54,7 @@ if [ $stage -le 1 ]; then
   echo "$0: Detecting overlaps..."
   $cmd JOB=1:$nj ${dir}/log/overlap.JOB.log \
     $HOME/miniconda3/bin/python steps/overlap/detect_overlaps_pyannote.py  \
-      --model-name ${model} \
+      --pretrained-id ${model} \
       ${dir}/wav.scp.JOB ${dir}
 fi
 
