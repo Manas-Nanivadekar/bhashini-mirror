@@ -31,7 +31,8 @@ wav_file=$1 #/data1/apoorvak/SD_SID_combined/Updated_demo/input/Lok_Sabha_Zero_H
 dataset=$2
 rttm_file= #optional
 thresh=0.6 #for clustering 
-pyannote_pretrained_model=vad_benchmarking/VAD_model/pytorch_model.bin # SAD and Overlap pyannote model.
+# Use official HF repo id for pyannote segmentation model (requires HF_TOKEN)
+pyannote_pretrained_model=pyannote/segmentation-3.0
 
 . ./utils/parse_options.sh
 

@@ -6,7 +6,26 @@ Replaces legacy torch.hub access to `ovl_dihard/ovl_ami`.
 """
 import argparse
 import os
+from pathlib import Path
 from pyannote.audio import Pipeline
+
+
+def _load_dotenv_upwards(filename: str = ".env", max_up: int = 5) -> None:
+    try:
+        here = Path(__file__).resolve().parent
+    except Exception:
+        here = Path.cwd()
+    candidates = [Path.cwd(), here] + list(here.parents)[:max_up]
+    for base in candidates:
+        env_path = base / filename
+        if env_path.is_file():
+            for line in env_path.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
+            break
 
 
 def read_args():
@@ -30,6 +49,8 @@ def read_args():
 
 
 def main(wav_scp, out_dir, pretrained_id, hf_token=None):
+    _load_dotenv_upwards()
+    hf_token = hf_token or os.environ.get("HF_TOKEN")
     if hf_token:
         pipeline = Pipeline.from_pretrained(pretrained_id, use_auth_token=hf_token)
     else:

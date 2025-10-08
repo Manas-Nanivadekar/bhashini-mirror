@@ -2,11 +2,43 @@ import re
 import sys
 import os
 import argparse
+from pathlib import Path
 from pyannote.audio.pipelines import VoiceActivityDetection
 from pyannote.audio import Model
 
+
+def _load_dotenv_upwards(filename: str = ".env", max_up: int = 5) -> None:
+    """Load environment variables from a nearby .env if present.
+
+    Looks in CWD, script dir, and parent dirs up to `max_up` levels.
+    Does not override variables that are already set in the environment.
+    """
+    try:
+        here = Path(__file__).resolve().parent
+    except Exception:
+        here = Path.cwd()
+    candidates = [Path.cwd(), here] + list(here.parents)[:max_up]
+    for base in candidates:
+        env_path = base / filename
+        if env_path.is_file():
+            for line in env_path.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
+            break
+
 def pyannote_model_instance():
-    model = Model.from_pretrained("pyannote/segmentation-3.0", use_auth_token="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")
+    # load token from env / .env
+    _load_dotenv_upwards()
+    token = os.environ.get("HF_TOKEN")
+    # default to HF repo id compatible with pyannote 4.x
+    model_id = "pyannote/segmentation-3.0"
+    if token:
+        model = Model.from_pretrained(model_id, use_auth_token=token)
+    else:
+        model = Model.from_pretrained(model_id)
     HYPER_PARAMETERS = {
         "min_duration_on": 0.0,
         "min_duration_off": 0.0}
@@ -49,4 +81,3 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     compute_vad(args.audio_path, args.output_dir)
-

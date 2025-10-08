@@ -43,6 +43,24 @@ import VB_diarization_v2 as VB_diarization
 from pdb import set_trace as bp
 import os
 
+
+def _load_dotenv_upwards(filename: str = ".env", max_up: int = 5) -> None:
+    try:
+        here = Path(__file__).resolve().parent
+    except Exception:
+        here = Path.cwd()
+    candidates = [Path.cwd(), here] + list(here.parents)[:max_up]
+    for base in candidates:
+        env_path = base / filename
+        if env_path.is_file():
+            for line in env_path.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
+            break
+
 def load_dubm(fpath):
     """Load diagonal UBM parameters.
 
@@ -487,7 +505,8 @@ def generate_overlap_labels(num_frames,wavfile,overlap_filename,step=100):
         # pipeline = Pipeline.from_pretrained("pyannote/overlapped-speech-detection",
         #                                     use_auth_token="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")
         
-        pyannote_pretrained_model = "../vad_benchmarking/VAD_model/pytorch_model.bin"
+        _load_dotenv_upwards()
+        pyannote_pretrained_model = os.environ.get("PYANNOTE_SEGMENTATION_MODEL", "pyannote/segmentation-3.0")
         model_path = pyannote_pretrained_model
         if os.path.isfile(model_path) and model_path.endswith('pytorch_model.bin'):
             model_path = os.path.dirname(model_path)

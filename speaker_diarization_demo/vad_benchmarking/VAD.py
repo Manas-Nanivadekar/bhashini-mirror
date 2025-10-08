@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pprint import pprint
 import os
+from pathlib import Path
 import argparse 
 import subprocess
 import pickle
@@ -34,6 +35,24 @@ warnings.filterwarnings("ignore")
 # . utils/parse_options.sh
 
 # pyannote_pretrained_model= sys.argv[1] #vad_benchmarking/VAD_model/pytorch_model.bin
+
+
+def _load_dotenv_upwards(filename: str = ".env", max_up: int = 5) -> None:
+    try:
+        here = Path(__file__).resolve().parent
+    except Exception:
+        here = Path.cwd()
+    candidates = [Path.cwd(), here] + list(here.parents)[:max_up]
+    for base in candidates:
+        env_path = base / filename
+        if env_path.is_file():
+            for line in env_path.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
+            break
 
 def silero_vad(input_wav):
 	model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad',
@@ -55,22 +74,23 @@ def VBxVAD(input_wav):
 	subprocess.run(["sh","/home1/somil/VBx-VAD/VB_VAD.sh",input_wav])
 		
 def pyaanote_vad(args,input_wav,dataset,HYPER_PARAMETERS=None):
-	nfile=input_wav.split("/")[-1].split(".")[0]
+    nfile=input_wav.split("/")[-1].split(".")[0]
 
-	# Accept HF repo id, local directory, or path to pytorch_model.bin
-	model_path = args.pyannote_pretrained_model
-	if os.path.isfile(model_path) and model_path.endswith('pytorch_model.bin'):
-		model_path = os.path.dirname(model_path)
-	try:
-		# Try with token first if provided via env/arg
-		hf_token = os.environ.get('HF_TOKEN', None)
-		if hf_token:
-			model = Model.from_pretrained(model_path, use_auth_token=hf_token)
-		else:
-			model = Model.from_pretrained(model_path)
-	except TypeError:
-		# Backward-compat without token kwarg
-		model = Model.from_pretrained(model_path)
+    # Accept HF repo id, local directory, or path to pytorch_model.bin
+    model_path = args.pyannote_pretrained_model
+    if os.path.isfile(model_path) and model_path.endswith('pytorch_model.bin'):
+        model_path = os.path.dirname(model_path)
+    try:
+        # Try with token first if provided via env/arg
+        _load_dotenv_upwards()
+        hf_token = os.environ.get('HF_TOKEN', None)
+        if hf_token:
+            model = Model.from_pretrained(model_path, use_auth_token=hf_token)
+        else:
+            model = Model.from_pretrained(model_path)
+    except TypeError:
+        # Backward-compat without token kwarg
+        model = Model.from_pretrained(model_path)
 	pipeline = VoiceActivityDetection(segmentation=model)
 	if HYPER_PARAMETERS is None:
 		if "ami" in args.dataset:
@@ -142,4 +162,3 @@ def main():
 	
 	
 main()
-

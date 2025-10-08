@@ -6,13 +6,31 @@ import os
 from pdb import set_trace as bp
 from pathlib import Path
 
+
+def _load_dotenv_upwards(filename: str = ".env", max_up: int = 5) -> None:
+    try:
+        here = Path(__file__).resolve().parent
+    except Exception:
+        here = Path.cwd()
+    candidates = [Path.cwd(), here] + list(here.parents)[:max_up]
+    for base in candidates:
+        env_path = base / filename
+        if env_path.is_file():
+            for line in env_path.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
+            break
+
 parser = argparse.ArgumentParser(description='overlap prediction')
 parser.add_argument(
         'data_dir', type=Path, help='Subset data directory')
 parser.add_argument(
         'output_dir', type=Path, help='Output directory')
 parser.add_argument(
-        '--pyannote_pretrained_model', type=str, default="../vad_benchmarking/VAD_model/pytorch_model.bin",
+        '--pyannote_pretrained_model', type=str, default=os.environ.get('PYANNOTE_SEGMENTATION_MODEL', 'pyannote/segmentation-3.0'),
 )
 parser.add_argument(
         '--hf_token', type=str, default=os.environ.get('HF_TOKEN'),
@@ -31,11 +49,13 @@ def generate_overlap_labels(num_frames,wavfile,overlap_filename,step=100):
         # pipeline = Pipeline.from_pretrained("pyannote/overlapped-speech-detection",
         #                                     use_auth_token="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")
         # Accept either HF repo id, local directory, or path to pytorch_model.bin
+        _load_dotenv_upwards()
         model_path = args.pyannote_pretrained_model
         if os.path.isfile(model_path) and model_path.endswith('pytorch_model.bin'):
             model_path = os.path.dirname(model_path)
-        if args.hf_token:
-            model = Model.from_pretrained(model_path, use_auth_token=args.hf_token)
+        token = args.hf_token or os.environ.get('HF_TOKEN')
+        if token:
+            model = Model.from_pretrained(model_path, use_auth_token=token)
         else:
             model = Model.from_pretrained(model_path)
         # pipeline = OverlappedSpeechDetectionPipeline(use_auth_token="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").instantiate(best_params)
