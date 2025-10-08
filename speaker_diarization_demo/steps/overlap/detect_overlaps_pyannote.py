@@ -51,10 +51,17 @@ def read_args():
 def main(wav_scp, out_dir, pretrained_id, hf_token=None):
     _load_dotenv_upwards()
     hf_token = hf_token or os.environ.get("HF_TOKEN")
-    if hf_token:
-        pipeline = Pipeline.from_pretrained(pretrained_id, use_auth_token=hf_token)
-    else:
-        pipeline = Pipeline.from_pretrained(pretrained_id)
+    try:
+        if hf_token:
+            pipeline = Pipeline.from_pretrained(pretrained_id, use_auth_token=hf_token)
+        else:
+            pipeline = Pipeline.from_pretrained(pretrained_id)
+    except Exception as e:
+        raise RuntimeError(
+            f"Failed to load pyannote pipeline '{pretrained_id}'. "
+            f"Set HF_TOKEN in .env or pass --hf-token with access.\n"
+            f"Original error: {e}"
+        )
 
     os.makedirs(out_dir, exist_ok=True)
     with open(wav_scp, 'r') as f:

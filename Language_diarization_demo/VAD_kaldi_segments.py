@@ -35,10 +35,17 @@ def pyannote_model_instance():
     token = os.environ.get("HF_TOKEN")
     # default to HF repo id compatible with pyannote 4.x
     model_id = "pyannote/segmentation-3.0"
-    if token:
-        model = Model.from_pretrained(model_id, use_auth_token=token)
-    else:
-        model = Model.from_pretrained(model_id)
+    try:
+        if token:
+            model = Model.from_pretrained(model_id, use_auth_token=token)
+        else:
+            model = Model.from_pretrained(model_id)
+    except Exception as e:
+        raise RuntimeError(
+            f"Failed to load pyannote model '{model_id}'. "
+            f"Ensure HF_TOKEN is set and has access, or the model id is correct.\n"
+            f"Original error: {e}"
+        )
     HYPER_PARAMETERS = {
         "min_duration_on": 0.0,
         "min_duration_off": 0.0}

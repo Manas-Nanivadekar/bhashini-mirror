@@ -54,10 +54,17 @@ def generate_overlap_labels(num_frames,wavfile,overlap_filename,step=100):
         if os.path.isfile(model_path) and model_path.endswith('pytorch_model.bin'):
             model_path = os.path.dirname(model_path)
         token = args.hf_token or os.environ.get('HF_TOKEN')
-        if token:
-            model = Model.from_pretrained(model_path, use_auth_token=token)
-        else:
-            model = Model.from_pretrained(model_path)
+        try:
+            if token:
+                model = Model.from_pretrained(model_path, use_auth_token=token)
+            else:
+                model = Model.from_pretrained(model_path)
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to load pyannote model '{model_path}'. "
+                f"Set HF_TOKEN in .env or pass --hf_token with access.\n"
+                f"Original error: {e}"
+            )
         # pipeline = OverlappedSpeechDetectionPipeline(use_auth_token="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").instantiate(best_params)
         pipeline = OverlappedSpeechDetectionPipeline(segmentation=model).instantiate(best_params)
         output = pipeline(wavfile)

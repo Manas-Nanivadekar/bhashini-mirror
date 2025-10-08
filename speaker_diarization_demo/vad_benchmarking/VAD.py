@@ -80,17 +80,30 @@ def pyaanote_vad(args,input_wav,dataset,HYPER_PARAMETERS=None):
     model_path = args.pyannote_pretrained_model
     if os.path.isfile(model_path) and model_path.endswith('pytorch_model.bin'):
         model_path = os.path.dirname(model_path)
+    # Try with token first if provided via env/arg; raise on failure
+    _load_dotenv_upwards()
+    hf_token = os.environ.get('HF_TOKEN', None)
     try:
-        # Try with token first if provided via env/arg
-        _load_dotenv_upwards()
-        hf_token = os.environ.get('HF_TOKEN', None)
         if hf_token:
             model = Model.from_pretrained(model_path, use_auth_token=hf_token)
         else:
             model = Model.from_pretrained(model_path)
     except TypeError:
         # Backward-compat without token kwarg
-        model = Model.from_pretrained(model_path)
+        try:
+            model = Model.from_pretrained(model_path)
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to load pyannote model '{model_path}'. "
+                f"Set HF_TOKEN in .env or provide accessible model id.\n"
+                f"Original error: {e}"
+            )
+    except Exception as e:
+        raise RuntimeError(
+            f"Failed to load pyannote model '{model_path}'. "
+            f"Set HF_TOKEN in .env or provide accessible model id.\n"
+            f"Original error: {e}"
+        )
 	pipeline = VoiceActivityDetection(segmentation=model)
 	if HYPER_PARAMETERS is None:
 		if "ami" in args.dataset:
